@@ -451,7 +451,13 @@ public class WMTSGetCapabilities {
         layerGridSubSets(xml, layer);
         // TODO REST
         // str.append("    <ResourceURL format=\"image/png\" resourceType=\"tile\" template=\"http://www.maps.cat/wmts/BlueMarbleNextGeneration/default/BigWorldPixel/{TileMatrix}/{TileRow}/{TileCol}.png\"/>\n");
-
+        
+        /*
+         * <ResourceURL format="image/png" resourceType="tile" template="http://www.opengis.uab.es/SITiled/world/etopo2/default/WholeWorld_CRS_84/{TileMatrix}/{TileRow}/{TileCol}.png"/>
+         * <ResourceURL format="application/gml+xml; version=3.1" resourceType="FeatureInfo" template="http://www.opengis.uab.es/SITiled/world/etopo2/default/WholeWorld_CRS_84/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}.xml"/>
+         */
+        layerResourceUrls(xml, layer);
+        
         // allow extensions to contribute extra metadata to this layer
         for (WMTSExtension extension : extensions) {
             extension.encodeLayer(xml, layer);
@@ -609,11 +615,10 @@ public class WMTSGetCapabilities {
     }
      
      private void layerFormats(XMLBuilder xml, TileLayer layer) throws IOException {
-         Iterator<MimeType> mimeIter = layer.getMimeTypes().iterator();
-         
-         while(mimeIter.hasNext()){
-             xml.simpleElement("Format", mimeIter.next().getFormat(), true);
-         }
+        List<String> mimeFormats = WMTSUtils.getLayerFormats(layer);
+        for (String format : mimeFormats) {
+            xml.simpleElement("Format", format, true);
+        }
      }
      
      private void layerInfoFormats(XMLBuilder xml, TileLayer layer) throws IOException {
@@ -684,6 +689,17 @@ public class WMTSGetCapabilities {
             xml.endElement("TileMatrixSetLink");
          }
      }
+     
+    private void layerResourceUrls(XMLBuilder xml, TileLayer layer) throws IOException {
+        List<String> mimeFormats = WMTSUtils.getLayerFormats(layer);
+        for (String format : mimeFormats) {
+            xml.indentElement("ResourceURL");
+            xml.attribute("format", format);
+            xml.attribute("resourceType", "");
+            xml.attribute("template", "");
+            xml.endElement("ResourceURL");
+        }
+    }
      
      private void tileMatrixSet(XMLBuilder xml, GridSet gridSet) throws IOException {
          xml.indentElement("TileMatrixSet");
