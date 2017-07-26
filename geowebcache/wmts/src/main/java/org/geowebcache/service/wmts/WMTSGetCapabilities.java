@@ -53,6 +53,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -456,7 +457,7 @@ public class WMTSGetCapabilities {
          * <ResourceURL format="image/png" resourceType="tile" template="http://www.opengis.uab.es/SITiled/world/etopo2/default/WholeWorld_CRS_84/{TileMatrix}/{TileRow}/{TileCol}.png"/>
          * <ResourceURL format="application/gml+xml; version=3.1" resourceType="FeatureInfo" template="http://www.opengis.uab.es/SITiled/world/etopo2/default/WholeWorld_CRS_84/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}.xml"/>
          */
-        layerResourceUrls(xml, layer);
+        layerResourceUrls(xml, layer, filters, baseurl);
         
         // allow extensions to contribute extra metadata to this layer
         for (WMTSExtension extension : extensions) {
@@ -621,34 +622,25 @@ public class WMTSGetCapabilities {
         }
      }
      
-     private void layerInfoFormats(XMLBuilder xml, TileLayer layer) throws IOException {
-         if (layer.isQueryable()) {
-             Iterator<MimeType> mimeIter = layer.getInfoMimeTypes().iterator();
-        	 while (mimeIter.hasNext()) {
-        		 xml.simpleElement("InfoFormat", mimeIter.next().getFormat(), true);
-        	 }
-         }
-     }
+    private void layerInfoFormats(XMLBuilder xml, TileLayer layer) throws IOException {
+        if (layer.isQueryable()) {
+            List<String> infoFormats = WMTSUtils.getInfoFormats(layer);
+            for (String format : infoFormats) {
+                xml.simpleElement("InfoFormat", format, true);
+            }
+        }
+    }
      
-     private void layerDimensions(XMLBuilder xml, TileLayer layer, List<ParameterFilter> filters) throws IOException {
-         
-         Iterator<ParameterFilter> iter = filters.iterator();
-         
-         while(iter.hasNext()) {
-             ParameterFilter filter = iter.next();
-             
-             if(! filter.getKey().equalsIgnoreCase("STYLES")) {
-                 List<String> values = filter.getLegalValues();
-             
-                 if(values != null) {
-                     dimensionDescription(xml, filter, values);
-                 }
-             }
-         }
-     }
+    private void layerDimensions(XMLBuilder xml, TileLayer layer, List<ParameterFilter> filters)
+            throws IOException {
+        List<ParameterFilter> layerDimensions = WMTSUtils.getLayerDimensions(filters);
+        for (ParameterFilter dimension : layerDimensions) {
+            dimensionDescription(xml, dimension, dimension.getLegalValues());
+        }
+    }
          
      private void dimensionDescription(XMLBuilder xml, ParameterFilter filter, List<String> values) throws IOException {
-         xml.startElement("Dimension");
+         xml.indentElement("Dimension");
          xml.simpleElement("Identifier", filter.getKey(), false);
          String defaultStr = TileLayer.encodeDimensionValue(filter.getDefaultValue());
          xml.simpleElement("Default", defaultStr, false);
@@ -690,15 +682,36 @@ public class WMTSGetCapabilities {
          }
      }
      
-    private void layerResourceUrls(XMLBuilder xml, TileLayer layer) throws IOException {
+    private void layerResourceUrls(XMLBuilder xml, TileLayer layer, List<ParameterFilter> filters,
+            String baseurl) throws IOException {
         List<String> mimeFormats = WMTSUtils.getLayerFormats(layer);
-        for (String format : mimeFormats) {
-            xml.indentElement("ResourceURL");
-            xml.attribute("format", format);
-            xml.attribute("resourceType", "");
-            xml.attribute("template", "");
-            xml.endElement("ResourceURL");
+        List<ParameterFilter> layerDimensions = WMTSUtils.getLayerDimensions(filters);
+        String commonTemplate = baseUrl + "/" + layer.getName()
+                + "/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}";
+        String commonDimensions = "";
+        if (!layerDimensions.isEmpty()) {
+            commonDimensions = "&"
+                    + layerDimensions.stream().map(d -> d.getKey() + "={" + d.getKey() + "}")
+                            .collect(Collectors.joining("&"));
         }
+        for (String format : mimeFormats) {
+            String template = commonTemplate + "?format=" + format + commonDimensions;
+            layerResourceUrlsGen(xml, format, "tile", template);
+        }
+        List<String> infoFormats = WMTSUtils.getInfoFormats(layer);
+        for (String format : infoFormats) {
+            String template = commonTemplate + "/{J}/{I}?format=" + format + commonDimensions;
+            layerResourceUrlsGen(xml, format, "FeatureInfo", template);
+        }
+    }
+
+    private void layerResourceUrlsGen(XMLBuilder xml, String format, String type, String template)
+            throws IOException {
+        xml.indentElement("ResourceURL");
+        xml.attribute("format", format);
+        xml.attribute("resourceType", type);
+        xml.attribute("template", template);
+        xml.endElement("ResourceURL");
     }
      
      private void tileMatrixSet(XMLBuilder xml, GridSet gridSet) throws IOException {
