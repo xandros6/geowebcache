@@ -213,7 +213,7 @@ public class WMTSServiceTest extends TestCase {
         assertNull(layerName);
         
         assertEquals(Conveyor.RequestHandler.SERVICE,conv.reqHandler);
-        WMTSGetCapabilities wmsCap = new WMTSGetCapabilities(tld,gridsetBroker, conv.servletReq,"http://localhost:8080", "/service/wms", new NullURLMangler());
+        WMTSGetCapabilities wmsCap = new WMTSGetCapabilities(tld,gridsetBroker, conv.servletReq,"http://localhost:8080", "/geowebcache", new NullURLMangler());
         wmsCap.writeResponse(conv.servletResp,mock(RuntimeStats.class));   
         assertTrue(resp.containsHeader("content-disposition"));
         assertEquals("inline;filename=wmts-getcapabilities.xml", resp.getHeader("content-disposition"));                            
@@ -256,31 +256,32 @@ public class WMTSServiceTest extends TestCase {
                 "/wmts:OnlineResource[@xlink:href='http://localhost:8080/some-url'])", doc));
         // checking that the layer has an associated tile resource URL, for each supported image
         // format of the layer
+        
         assertEquals("1", xpath.evaluate(
                 "count(//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='tile']"
                 + "[@format='image/jpeg']"
-                + "[@template='http://localhost:8080/service/wms/service/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}?format=image/jpeg'])", doc));
+                + "[@template='http://localhost:8080/geowebcache/rest/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}?format=image/jpeg'])", doc));
         assertEquals("1", xpath.evaluate(
                 "count(//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='tile']"
                 + "[@format='image/png']"
-                + "[@template='http://localhost:8080/service/wms/service/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}?format=image/png'])", doc));
+                + "[@template='http://localhost:8080/geowebcache/rest/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}?format=image/png'])", doc));
         // checking that the layer has an associated feature info resources URL, for each supported
         // feature info format of the layer
         assertEquals("1", xpath.evaluate(
                 "count(//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='FeatureInfo']"
                 + "[@format='text/plain']"
-                + "[@template='http://localhost:8080/service/wms/service/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=text/plain'])", doc));
+                + "[@template='http://localhost:8080/geowebcache/rest/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=text/plain'])", doc));
         assertEquals("1", xpath.evaluate(
                 "count(//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='FeatureInfo']"
                 + "[@format='text/html']"
-                + "[@template='http://localhost:8080/service/wms/service/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=text/html'])", doc));
+                + "[@template='http://localhost:8080/geowebcache/rest/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=text/html'])", doc));
         assertEquals("1", xpath.evaluate(
                 "count(//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='FeatureInfo']"
                 + "[@format='application/vnd.ogc.gml']"
-                + "[@template='http://localhost:8080/service/wms/service/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=application/vnd.ogc.gml'])", doc));        
+                + "[@template='http://localhost:8080/geowebcache/rest/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=application/vnd.ogc.gml'])", doc));        
         // Checking the service metadata URL
         assertEquals("1", xpath.evaluate(
-                "count(//wmts:ServiceMetadataURL[@xlink:href='http://localhost:8080/service/wms/service/wmts?REQUEST=getcapabilities&VERSION=1.0.0'])", doc));
+                "count(//wmts:ServiceMetadataURL[@xlink:href='http://localhost:8080/geowebcache/service/wmts?REQUEST=getcapabilities&VERSION=1.0.0'])", doc));
     }
 
     public void testGetCapWithExtensions() throws Exception {
@@ -438,7 +439,7 @@ public class WMTSServiceTest extends TestCase {
         assertNull(layerName);
         
         assertEquals(Conveyor.RequestHandler.SERVICE,conv.reqHandler);
-        WMTSGetCapabilities wmsCap = new WMTSGetCapabilities(tld,gridsetBroker, conv.servletReq,"http://localhost:8080", "/service/wms", new NullURLMangler());
+        WMTSGetCapabilities wmsCap = new WMTSGetCapabilities(tld,gridsetBroker, conv.servletReq,"http://localhost:8080", "/geowebcache", new NullURLMangler());
         wmsCap.writeResponse(conv.servletResp,mock(RuntimeStats.class));   
         assertTrue(resp.containsHeader("content-disposition"));
         assertEquals("inline;filename=wmts-getcapabilities.xml", resp.getHeader("content-disposition"));                            
@@ -506,7 +507,7 @@ public class WMTSServiceTest extends TestCase {
         assertNull(layerName);
         
         assertEquals(Conveyor.RequestHandler.SERVICE,conv.reqHandler);
-        WMTSGetCapabilities wmsCap = new WMTSGetCapabilities(tld,gridsetBroker, conv.servletReq,"http://localhost:8080", "/service/wms", new NullURLMangler());
+        WMTSGetCapabilities wmsCap = new WMTSGetCapabilities(tld,gridsetBroker, conv.servletReq,"http://localhost:8080", "/geowebcache", new NullURLMangler());
         wmsCap.writeResponse(conv.servletResp,mock(RuntimeStats.class));   
         assertTrue(resp.containsHeader("content-disposition"));
         assertEquals("inline;filename=wmts-getcapabilities.xml", resp.getHeader("content-disposition"));                            
@@ -572,7 +573,7 @@ public class WMTSServiceTest extends TestCase {
         assertNull(layerName);
         
         assertEquals(Conveyor.RequestHandler.SERVICE,conv.reqHandler);
-        WMTSGetCapabilities wmsCap = new WMTSGetCapabilities(tld,gridsetBroker, conv.servletReq,"http://localhost:8080", "/service/wms", new NullURLMangler());
+        WMTSGetCapabilities wmsCap = new WMTSGetCapabilities(tld,gridsetBroker, conv.servletReq,"http://localhost:8080", "/geowebcache", new NullURLMangler());
         wmsCap.writeResponse(conv.servletResp,mock(RuntimeStats.class));   
         assertTrue(resp.containsHeader("content-disposition"));
         assertEquals("inline;filename=wmts-getcapabilities.xml", resp.getHeader("content-disposition"));                            
@@ -639,7 +640,7 @@ public class WMTSServiceTest extends TestCase {
         assertNull(layerName);
         
         assertEquals(Conveyor.RequestHandler.SERVICE,conv.reqHandler);
-        WMTSGetCapabilities wmsCap = new WMTSGetCapabilities(tld,gridsetBroker, conv.servletReq,"http://localhost:8080", "/service/wms", new NullURLMangler());
+        WMTSGetCapabilities wmsCap = new WMTSGetCapabilities(tld,gridsetBroker, conv.servletReq,"http://localhost:8080", "/geowebcache", new NullURLMangler());
         wmsCap.writeResponse(conv.servletResp,mock(RuntimeStats.class));   
         assertTrue(resp.containsHeader("content-disposition"));
         assertEquals("inline;filename=wmts-getcapabilities.xml", resp.getHeader("content-disposition"));                            
@@ -725,7 +726,7 @@ public class WMTSServiceTest extends TestCase {
 
         assertEquals(Conveyor.RequestHandler.SERVICE, conv.reqHandler);
         WMTSGetCapabilities wmsCap = new WMTSGetCapabilities(tld, gridsetBroker, conv.servletReq,
-                "http://localhost:8080", "/service/wms", new NullURLMangler());
+                "http://localhost:8080", "/geowebcache", new NullURLMangler());
         wmsCap.writeResponse(conv.servletResp, mock(RuntimeStats.class));
         assertTrue(resp.containsHeader("content-disposition"));
         assertEquals("inline;filename=wmts-getcapabilities.xml",

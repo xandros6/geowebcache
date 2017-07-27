@@ -52,6 +52,7 @@ public class WMTSService extends Service  {
 
     public static final String SERVICE_WMTS = "wmts";
     static final String SERVICE_PATH = "/"+GeoWebCacheDispatcher.TYPE_SERVICE+"/"+SERVICE_WMTS;
+    static final String REST_PATH = "/"+GeoWebCacheDispatcher.TYPE_REST+"/"+SERVICE_WMTS;
 
     enum RequestType {
         TILE, CAPABILITIES, FEATUREINFO

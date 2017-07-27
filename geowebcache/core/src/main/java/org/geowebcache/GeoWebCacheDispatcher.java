@@ -80,6 +80,8 @@ public class GeoWebCacheDispatcher extends AbstractController {
     private static Log log = LogFactory.getLog(org.geowebcache.GeoWebCacheDispatcher.class);
 
     public static final String TYPE_SERVICE = "service";
+    
+    public static final String TYPE_REST = "rest";
 
     public static final String TYPE_DEMO = "demo";
 

@@ -66,6 +66,8 @@ public class WMTSGetCapabilities {
     private GridSetBroker gsb;
     
     private String baseUrl;
+    
+    private String restBaseUrl;
 
     private final Collection<WMTSExtension> extensions;
 
@@ -86,6 +88,8 @@ public class WMTSGetCapabilities {
         } else {
             this.baseUrl = urlMangler.buildURL(baseUrl, contextPath, WMTSService.SERVICE_PATH);
         }
+        
+        this.restBaseUrl = urlMangler.buildURL(baseUrl, contextPath, WMTSService.REST_PATH);
 
         this.extensions = extensions;
     }
@@ -457,7 +461,7 @@ public class WMTSGetCapabilities {
          * <ResourceURL format="image/png" resourceType="tile" template="http://www.opengis.uab.es/SITiled/world/etopo2/default/WholeWorld_CRS_84/{TileMatrix}/{TileRow}/{TileCol}.png"/>
          * <ResourceURL format="application/gml+xml; version=3.1" resourceType="FeatureInfo" template="http://www.opengis.uab.es/SITiled/world/etopo2/default/WholeWorld_CRS_84/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}.xml"/>
          */
-        layerResourceUrls(xml, layer, filters, baseurl);
+        layerResourceUrls(xml, layer, filters, restBaseUrl);
         
         // allow extensions to contribute extra metadata to this layer
         for (WMTSExtension extension : extensions) {
@@ -686,7 +690,7 @@ public class WMTSGetCapabilities {
             String baseurl) throws IOException {
         List<String> mimeFormats = WMTSUtils.getLayerFormats(layer);
         List<ParameterFilter> layerDimensions = WMTSUtils.getLayerDimensions(filters);
-        String commonTemplate = baseUrl + "/" + layer.getName()
+        String commonTemplate = baseurl + "/" + layer.getName()
                 + "/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}";
         String commonDimensions = "";
         if (!layerDimensions.isEmpty()) {
