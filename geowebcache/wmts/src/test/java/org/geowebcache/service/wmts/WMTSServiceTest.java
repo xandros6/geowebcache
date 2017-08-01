@@ -1,46 +1,44 @@
 package org.geowebcache.service.wmts;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.arrayContaining;
+import static org.hamcrest.Matchers.equalToIgnoringCase;
+import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.argThat;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.arrayContaining;
-import static org.hamcrest.Matchers.equalToIgnoringCase;
-import static org.hamcrest.Matchers.hasEntry;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.StringWriter;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.TreeSet;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-
-import junit.framework.TestCase;
 
 import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.custommonkey.xmlunit.SimpleNamespaceContext;
+import org.custommonkey.xmlunit.Validator;
 import org.custommonkey.xmlunit.XMLUnit;
 import org.custommonkey.xmlunit.XpathEngine;
-import org.custommonkey.xmlunit.Validator;
 import org.geowebcache.GeoWebCacheDispatcher;
 import org.geowebcache.GeoWebCacheException;
+import org.geowebcache.config.Configuration;
+import org.geowebcache.config.XMLConfiguration;
 import org.geowebcache.config.XMLGridSubset;
 import org.geowebcache.config.legends.LegendInfo;
 import org.geowebcache.config.legends.LegendInfoBuilder;
@@ -49,6 +47,7 @@ import org.geowebcache.config.meta.ServiceInformation;
 import org.geowebcache.config.meta.ServiceProvider;
 import org.geowebcache.conveyor.Conveyor;
 import org.geowebcache.conveyor.ConveyorTile;
+import org.geowebcache.demo.Demo;
 import org.geowebcache.filter.parameters.ParameterFilter;
 import org.geowebcache.filter.parameters.StringParameterFilter;
 import org.geowebcache.grid.BoundingBox;
@@ -60,13 +59,17 @@ import org.geowebcache.io.XMLBuilder;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.layer.TileLayerDispatcher;
 import org.geowebcache.layer.meta.MetadataURL;
+import org.geowebcache.layer.wms.WMSLayer;
 import org.geowebcache.mime.MimeType;
 import org.geowebcache.service.OWSException;
 import org.geowebcache.stats.RuntimeStats;
 import org.geowebcache.storage.StorageBroker;
 import org.geowebcache.util.NullURLMangler;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.w3c.dom.Document;
+
+import junit.framework.TestCase;
 
 public class WMTSServiceTest extends TestCase {
 
@@ -260,28 +263,30 @@ public class WMTSServiceTest extends TestCase {
         assertEquals("1", xpath.evaluate(
                 "count(//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='tile']"
                 + "[@format='image/jpeg']"
-                + "[@template='http://localhost:8080/geowebcache/rest/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}?format=image/jpeg'])", doc));
+                + "[@template='http://localhost:8080/geowebcache" + WMTSService.REST_PATH + "/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}?format=image/jpeg'])", doc));
         assertEquals("1", xpath.evaluate(
                 "count(//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='tile']"
                 + "[@format='image/png']"
-                + "[@template='http://localhost:8080/geowebcache/rest/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}?format=image/png'])", doc));
+                + "[@template='http://localhost:8080/geowebcache" + WMTSService.REST_PATH + "/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}?format=image/png'])", doc));
         // checking that the layer has an associated feature info resources URL, for each supported
         // feature info format of the layer
         assertEquals("1", xpath.evaluate(
                 "count(//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='FeatureInfo']"
                 + "[@format='text/plain']"
-                + "[@template='http://localhost:8080/geowebcache/rest/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=text/plain'])", doc));
+                + "[@template='http://localhost:8080/geowebcache" + WMTSService.REST_PATH + "/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=text/plain'])", doc));
         assertEquals("1", xpath.evaluate(
                 "count(//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='FeatureInfo']"
                 + "[@format='text/html']"
-                + "[@template='http://localhost:8080/geowebcache/rest/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=text/html'])", doc));
+                + "[@template='http://localhost:8080/geowebcache" + WMTSService.REST_PATH + "/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=text/html'])", doc));
         assertEquals("1", xpath.evaluate(
                 "count(//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='FeatureInfo']"
                 + "[@format='application/vnd.ogc.gml']"
-                + "[@template='http://localhost:8080/geowebcache/rest/wmts/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=application/vnd.ogc.gml'])", doc));        
+                + "[@template='http://localhost:8080/geowebcache" + WMTSService.REST_PATH + "/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=application/vnd.ogc.gml'])", doc));        
         // Checking the service metadata URL
         assertEquals("1", xpath.evaluate(
-                "count(//wmts:ServiceMetadataURL[@xlink:href='http://localhost:8080/geowebcache/service/wmts?REQUEST=getcapabilities&VERSION=1.0.0'])", doc));
+                "count(//wmts:ServiceMetadataURL[@xlink:href='http://localhost:8080/geowebcache" + WMTSService.SERVICE_PATH + "?REQUEST=getcapabilities&VERSION=1.0.0'])", doc));
+        assertEquals("1", xpath.evaluate(
+                "count(//wmts:ServiceMetadataURL[@xlink:href='http://localhost:8080/geowebcache" + WMTSService.REST_PATH + "/WMTSCapabilities.xml'])", doc));
     }
 
     public void testGetCapWithExtensions() throws Exception {
@@ -675,6 +680,12 @@ public class WMTSServiceTest extends TestCase {
         assertEquals("1", xpath.evaluate("count(//wmts:Contents/wmts:Layer[ows:Identifier='mockLayer']/wmts:Style/ows:Identifier[text()='Baz'])", doc));
     }
     
+    /**
+     * Generates a layer with "elevation" and "time" dimensions and mime types "image/png" , "image/jpeg" , "text/plain" , "text/html" , "application/vnd.ogc.gml"
+     * then checks if in the capabilities documents each <ResourceURL> elements contains both the dimensions components.
+     * @throws Exception
+     */
+    @SuppressWarnings("unchecked")
     public void testGetCapWithMultipleDimensions() throws Exception {
 
         GeoWebCacheDispatcher gwcd = mock(GeoWebCacheDispatcher.class);
@@ -682,7 +693,6 @@ public class WMTSServiceTest extends TestCase {
 
         service = new WMTSService(sb, tld, null, mock(RuntimeStats.class));
 
-        @SuppressWarnings("unchecked")
         Map<String, String[]> kvp = new CaseInsensitiveMap();
         kvp.put("service", new String[] { "WMTS" });
         kvp.put("version", new String[] { "1.0.0" });
