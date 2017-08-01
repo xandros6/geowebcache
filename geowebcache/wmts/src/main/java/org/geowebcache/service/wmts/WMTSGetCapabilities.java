@@ -13,9 +13,27 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  * @author Arne Kepp, OpenGeo, Copyright 2009
+ * @author Sandro Salari, GeoSolutions S.A.S., Copyright 2017
  * 
  */
 package org.geowebcache.service.wmts;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -36,26 +54,9 @@ import org.geowebcache.layer.TileLayer;
 import org.geowebcache.layer.TileLayerDispatcher;
 import org.geowebcache.layer.meta.LayerMetaInformation;
 import org.geowebcache.layer.meta.MetadataURL;
-import org.geowebcache.mime.MimeType;
 import org.geowebcache.stats.RuntimeStats;
 import org.geowebcache.util.ServletUtils;
 import org.geowebcache.util.URLMangler;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 public class WMTSGetCapabilities {
     
@@ -154,9 +155,13 @@ public class WMTSGetCapabilities {
 
             contents(xml);
             xml.indentElement("ServiceMetadataURL")
-                .attribute("xlink:href", baseUrl+"?REQUEST=getcapabilities&VERSION=1.0.0")
-                .endElement();
-            
+                    .attribute("xlink:href", baseUrl + "?REQUEST=getcapabilities&VERSION=1.0.0")
+                    .endElement();
+
+            xml.indentElement("ServiceMetadataURL")
+                    .attribute("xlink:href", restBaseUrl + "/WMTSCapabilities.xml")
+                    .endElement();
+
             xml.endElement("Capabilities");
             
             return str.toString();
@@ -454,13 +459,7 @@ public class WMTSGetCapabilities {
         }
         
         layerGridSubSets(xml, layer);
-        // TODO REST
-        // str.append("    <ResourceURL format=\"image/png\" resourceType=\"tile\" template=\"http://www.maps.cat/wmts/BlueMarbleNextGeneration/default/BigWorldPixel/{TileMatrix}/{TileRow}/{TileCol}.png\"/>\n");
-        
-        /*
-         * <ResourceURL format="image/png" resourceType="tile" template="http://www.opengis.uab.es/SITiled/world/etopo2/default/WholeWorld_CRS_84/{TileMatrix}/{TileRow}/{TileCol}.png"/>
-         * <ResourceURL format="application/gml+xml; version=3.1" resourceType="FeatureInfo" template="http://www.opengis.uab.es/SITiled/world/etopo2/default/WholeWorld_CRS_84/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}.xml"/>
-         */
+
         layerResourceUrls(xml, layer, filters, restBaseUrl);
         
         // allow extensions to contribute extra metadata to this layer
@@ -685,23 +684,29 @@ public class WMTSGetCapabilities {
             xml.endElement("TileMatrixSetLink");
          }
      }
-     
+    /**
+     * For each layer discovers the available image formats, feature info formats and dimensions 
+     * and produce the necessary <ResourceURL> elements.
+     */
     private void layerResourceUrls(XMLBuilder xml, TileLayer layer, List<ParameterFilter> filters,
             String baseurl) throws IOException {
-        List<String> mimeFormats = WMTSUtils.getLayerFormats(layer);
-        List<ParameterFilter> layerDimensions = WMTSUtils.getLayerDimensions(filters);
         String commonTemplate = baseurl + "/" + layer.getName()
                 + "/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}";
         String commonDimensions = "";
+        //Extracts layer dimension 
+        List<ParameterFilter> layerDimensions = WMTSUtils.getLayerDimensions(filters);
         if (!layerDimensions.isEmpty()) {
             commonDimensions = "&"
                     + layerDimensions.stream().map(d -> d.getKey() + "={" + d.getKey() + "}")
                             .collect(Collectors.joining("&"));
         }
+        //Extracts image formats
+        List<String> mimeFormats = WMTSUtils.getLayerFormats(layer);
         for (String format : mimeFormats) {
             String template = commonTemplate + "?format=" + format + commonDimensions;
             layerResourceUrlsGen(xml, format, "tile", template);
         }
+        //Extracts feature info formats
         List<String> infoFormats = WMTSUtils.getInfoFormats(layer);
         for (String format : infoFormats) {
             String template = commonTemplate + "/{J}/{I}?format=" + format + commonDimensions;
@@ -709,6 +714,9 @@ public class WMTSGetCapabilities {
         }
     }
 
+    /**
+     * Generate the <ResourceURL> element into XML.
+     */
     private void layerResourceUrlsGen(XMLBuilder xml, String format, String type, String template)
             throws IOException {
         xml.indentElement("ResourceURL");
