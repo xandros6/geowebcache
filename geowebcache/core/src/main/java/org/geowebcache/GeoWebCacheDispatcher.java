@@ -56,6 +56,7 @@ import org.geowebcache.io.Resource;
 import org.geowebcache.layer.BadTileException;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.layer.TileLayerDispatcher;
+import org.geowebcache.layer.wms.WMSLayerTest;
 import org.geowebcache.mime.ImageMime;
 import org.geowebcache.service.HttpErrorCodeException;
 import org.geowebcache.service.OWSException;
@@ -356,33 +357,8 @@ public class GeoWebCacheDispatcher extends AbstractController {
         if (conv.reqHandler == Conveyor.RequestHandler.SERVICE) {
             // A3 The service object takes it from here
             service.handleRequest(conv);
-
         } else {
-            ConveyorTile convTile = (ConveyorTile) conv;
-
-            // B3) Get the configuration that has to respond to this request
-            TileLayer layer = tileLayerDispatcher.getTileLayer(layerName);
-
-            // Save it for later
-            convTile.setTileLayer(layer);
-
-            // Apply the filters
-            layer.applyRequestFilters(convTile);
-
-            // Keep the URI
-            // tile.requestURI = request.getRequestURI();
-
-            try {
-                // A5) Ask the layer to provide the content for the tile
-                convTile = layer.getTile(convTile);
-
-                // A6) Write response
-                writeData(convTile);
-
-                // Alternatively:
-            } catch (OutsideCoverageException e) {
-                writeEmpty(convTile, e.getMessage());
-            }
+            GeoWebCacheUtils.writeTile(conv, layerName, tileLayerDispatcher, defaultStorageFinder, runtimeStats);
         }
     }
 
