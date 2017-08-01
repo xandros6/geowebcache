@@ -110,6 +110,7 @@ public class WMTSService extends Service  {
     @Override
     public Conveyor getConveyor(HttpServletRequest request, HttpServletResponse response)
             throws GeoWebCacheException, OWSException {
+        
         // let's see if we have any extension that wants to provide a conveyor for this request
         for(WMTSExtension extension : extensions) {
             Conveyor conveyor = extension.getConveyor(request, response, sb);
@@ -118,12 +119,33 @@ public class WMTSService extends Service  {
                 return conveyor;
             }
         }
-        // no extension wants to handle this request
+        
         String encoding = request.getCharacterEncoding();
         String[] keys = { "layer", "request", "style", "format", "tilematrixset", "tilematrix",
                 "tilerow", "tilecol" };
         Map<String, String> values = ServletUtils.selectedStringsFromMap(request.getParameterMap(),
                 encoding, keys);
+        return getConveyor(request, response, values);
+    }
+    
+    public Conveyor getConveyor(HttpServletRequest request, HttpServletResponse response, Map<String, String> values)
+            throws GeoWebCacheException, OWSException {
+
+        // let's see if we have any extension that wants to provide a conveyor for this request
+        for(WMTSExtension extension : extensions) {
+            Conveyor conveyor = extension.getConveyor(request, response, sb);
+            if (conveyor != null) {
+                // this extension provides a conveyor for this request, we are done
+                return conveyor;
+            }
+        }
+        
+        // no extension wants to handle this request
+        //String encoding = request.getCharacterEncoding();
+        //String[] keys = { "layer", "request", "style", "format", "tilematrixset", "tilematrix",
+        //        "tilerow", "tilecol" };
+        //Map<String, String> values = ServletUtils.selectedStringsFromMap(request.getParameterMap(),
+        //        encoding, keys);
 
         String req = values.get("request");
         if (req == null) {
@@ -173,9 +195,17 @@ public class WMTSService extends Service  {
 
         Map<String, String> fullParameters;
         try {
-            // WMTS uses the "STYLE" instead of "STYLES"
-            @SuppressWarnings("unchecked")
+            
             Map<String, String[]> rawParameters = new HashMap<>(request.getParameterMap());
+
+            /*
+             * Merge values with request parameter
+             */
+            for (Entry<String, String> e : values.entrySet()) {
+                rawParameters.put(e.getKey(), new String[] { e.getValue() });
+            }
+            
+            // WMTS uses the "STYLE" instead of "STYLES"
             for(Entry<String, String[]> e:rawParameters.entrySet()){
                 if(e.getKey().equalsIgnoreCase("STYLE")) {
                     rawParameters.put("STYLES", e.getValue());
