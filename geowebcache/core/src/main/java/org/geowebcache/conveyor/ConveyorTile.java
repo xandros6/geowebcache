@@ -57,7 +57,9 @@ public class ConveyorTile extends Conveyor implements TileResponseReceiver {
 
     TileObject stObj = null;
 
-    private Map<String, String> fullParameters; // TODO: why is this "full"?  It seems to only relate to filtering
+    private Map<String, String[]> fullParameters;
+    
+    private Map<String, String> filteringParameters;
 
     private boolean isMetaTileCacheOnly;
 
@@ -67,24 +69,32 @@ public class ConveyorTile extends Conveyor implements TileResponseReceiver {
     }
 
     /**
-     * @deprecated as of 1.2.5, use
+     // @deprecated as of 1.2.5, use
      *             {@link #ConveyorTile(StorageBroker, String, String, long[], MimeType, Map, HttpServletRequest, HttpServletResponse)}
      *             instead. This method just calls it with the provided {@code fullParameters} and
      *             will be removed soon
      */
+    /*
     @Deprecated
     public ConveyorTile(StorageBroker sb, String layerId, String gridSetId, long[] tileIndex,
-            MimeType mimeType, Map<String, String> fullParameters,
+            MimeType mimeType, Map<String, String> fullParameters, 
             Map<String, String> modifiedParameters, HttpServletRequest servletReq,
             HttpServletResponse servletResp) {
         this(sb, layerId, gridSetId, tileIndex, mimeType, fullParameters, servletReq, servletResp);
-    }
+    }*/
 
+    public ConveyorTile(StorageBroker sb, String layerId, String gridSetId, long[] tileIndex,
+            MimeType mimeType, Map<String, String[]> fullParameters, Map<String, String> filteringParameters, 
+            HttpServletRequest servletReq, HttpServletResponse servletResp) {
+        this(sb, layerId, gridSetId, tileIndex, mimeType, filteringParameters, servletReq, servletResp);
+        this.fullParameters = fullParameters;
+    }
+    
     /**
      * This constructor is used for an incoming request, the data is then added by the cache
      */
     public ConveyorTile(StorageBroker sb, String layerId, String gridSetId, long[] tileIndex,
-            MimeType mimeType, Map<String, String> filteringParameters,
+            MimeType mimeType, Map<String, String> filteringParameters, 
             HttpServletRequest servletReq, HttpServletResponse servletResp) {
 
         super(layerId, sb, servletReq, servletResp);
@@ -100,13 +110,20 @@ public class ConveyorTile extends Conveyor implements TileResponseReceiver {
 
         super.mimeType = mimeType;
 
-        this.fullParameters = filteringParameters;
+        this.filteringParameters = filteringParameters;
 
         stObj = TileObject.createQueryTileObject(layerId, idx, gridSetId, mimeType.getFormat(),
                 filteringParameters);
     }
 
-    public Map<String, String> getFullParameters() {
+    public Map<String, String> getFilteringParameters() {
+        if (filteringParameters == null) {
+            return Collections.emptyMap();
+        }
+        return filteringParameters;
+    }
+    
+    public Map<String, String[]> getFullParameters() {
         if (fullParameters == null) {
             return Collections.emptyMap();
         }
