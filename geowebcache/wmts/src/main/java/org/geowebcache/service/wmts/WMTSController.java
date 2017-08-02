@@ -27,15 +27,20 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.geowebcache.GeoWebCacheException;
 import org.geowebcache.GeoWebCacheExtensions;
 import org.geowebcache.GeoWebCacheUtils;
 import org.geowebcache.conveyor.Conveyor;
+import org.geowebcache.conveyor.Conveyor.CacheResult;
+import org.geowebcache.filter.request.RequestFilterException;
+import org.geowebcache.io.ByteArrayResource;
+import org.geowebcache.layer.BadTileException;
 import org.geowebcache.layer.TileLayerDispatcher;
+import org.geowebcache.service.HttpErrorCodeException;
 import org.geowebcache.service.OWSException;
 import org.geowebcache.stats.RuntimeStats;
 import org.geowebcache.storage.DefaultStorageFinder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -58,8 +63,8 @@ public class WMTSController {
     private RuntimeStats runtimeStats;
 
     @RequestMapping(value = "/WMTSCapabilities.xml", method = RequestMethod.GET)
-    public String getCapabilities() {
-        return "";
+    public void getCapabilities(HttpServletRequest request, HttpServletResponse response) {
+        manageCapabilitiesRequest(request, response);
     }
 
     @RequestMapping(value = "/{layer}/{style}/{tileMatrixSet}/{tileMatrix}/{tileRow}/{tileCol}", method = RequestMethod.GET, params = {
@@ -68,45 +73,108 @@ public class WMTSController {
             @PathVariable String layer, @PathVariable String style,
             @PathVariable String tileMatrixSet, @PathVariable String tileMatrix,
             @PathVariable String tileRow, @PathVariable String tileCol,
-            @RequestParam("format") String format, @RequestParam Map<String, String> params)
-            throws Exception {
-        Conveyor conv = null;
+            @RequestParam("format") String format, @RequestParam Map<String, String> params) {
 
-        List<WMTSService> services = GeoWebCacheExtensions.extensions(WMTSService.class);
-
-        Map<String, String> values = new HashMap<String, String>();
-        values.put("layer", layer);
-        values.put("request", "gettile");
-        values.put("style", style);
-        values.put("format", format);
-        values.put("tilematrixset", tileMatrixSet);
-        values.put("tilematrix", tileMatrix);
-        values.put("tilerow", tileRow);
-        values.put("tilecol", tileCol);
-
-        if (!services.isEmpty()) {
-            WMTSService service = services.get(0);
-            conv = service.getConveyor(request, response, values);
-
-            // 2) Find out what layer will be used and how
-            final String layerName = conv.getLayerId();
-            if (layerName != null && !tileLayerDispatcher.getTileLayer(layerName).isEnabled()) {
-                throw new OWSException(400, "InvalidParameterValue", "LAYERS",
-                        "Layer '" + layerName + "' is disabled");
-            }
-
-            GeoWebCacheUtils.writeTile(conv, layerName, tileLayerDispatcher, defaultStorageFinder,
-                    runtimeStats);
-        }
+        manageFeatureRequest(request, response, "gettile", layer, style, tileMatrixSet, tileMatrix,
+                tileRow, tileCol, null, null, format, null, params);
 
     }
 
-    @RequestMapping(value = "/{layer}/{style}/{tileMatrixSet}/{tileMatrix}/{tileRow}/{tileCol}/{J}/{I}", method = RequestMethod.GET, params = {
+    @RequestMapping(value = "/{layer}/{style}/{tileMatrixSet}/{tileMatrix}/{tileRow}/{tileCol}/{j}/{i}", method = RequestMethod.GET, params = {
             "format" })
-    public String getFeatureInfo(@PathVariable String layer, @PathVariable String style,
+    public void getFeatureInfo(HttpServletRequest request, HttpServletResponse response,
+            @PathVariable String layer, @PathVariable String style,
             @PathVariable String tileMatrixSet, @PathVariable String tileMatrix,
             @PathVariable String tileRow, @PathVariable String tileCol, @PathVariable String j,
-            @PathVariable String i, @RequestParam Map<String, String> params) {
-        return "";
+            @PathVariable String i, @RequestParam("format") String format,
+            @RequestParam Map<String, String> params) {
+
+        manageFeatureRequest(request, response, "getfeatureinfo", layer, style, tileMatrixSet,
+                tileMatrix, tileRow, tileCol, j, i, null, format, params);
     }
+
+    private void manageCapabilitiesRequest(HttpServletRequest request,
+            HttpServletResponse response) {
+        manageFeatureRequest(request, response, "getcapabilities", null, null, null, null, null,
+                null, null, null, null, null, null);
+    }
+
+    private void manageFeatureRequest(HttpServletRequest request, HttpServletResponse response,
+            String type, String layer, String style, String tileMatrixSet, String tileMatrix,
+            String tileRow, String tileCol, String j, String i, String format, String infoformat,
+            Map<String, String> params) {
+        try {
+            Conveyor conv = null;
+
+            List<WMTSService> services = GeoWebCacheExtensions.extensions(WMTSService.class);
+
+            Map<String, String> values = new HashMap<String, String>();
+            if (layer != null)
+                values.put("layer", layer);
+            if (type != null)
+                values.put("request", type);
+            if (style != null)
+                values.put("style", style);
+            if (tileMatrixSet != null)
+                values.put("tilematrixset", tileMatrixSet);
+            if (tileMatrix != null)
+                values.put("tilematrix", tileMatrix);
+            if (tileRow != null)
+                values.put("tilerow", tileRow);
+            if (tileCol != null)
+                values.put("tilecol", tileCol);
+            if (format != null)
+                values.put("format", format);
+            if (infoformat != null)
+                values.put("infoformat", infoformat);
+            if (j != null)
+                values.put("j", j);
+            if (i != null)
+                values.put("i", i);
+
+            if (!services.isEmpty()) {
+                WMTSService service = services.get(0);
+                conv = service.getConveyor(request, response, values);
+
+                final String layerName = conv.getLayerId();
+                if (layerName != null && !tileLayerDispatcher.getTileLayer(layerName).isEnabled()) {
+                    throw new OWSException(400, "InvalidParameterValue", "LAYERS",
+                            "Layer '" + layerName + "' is disabled");
+                }
+
+                // Check where this should be dispatched
+                if (conv.reqHandler == Conveyor.RequestHandler.SERVICE) {
+                    // A3 The service object takes it from here
+                    service.handleRequest(conv);
+                } else {
+                    GeoWebCacheUtils.writeTile(conv, layerName, tileLayerDispatcher,
+                            defaultStorageFinder, runtimeStats);
+                }
+
+            }
+
+        } catch (HttpErrorCodeException e) {
+            GeoWebCacheUtils.writeFixedResponse(response, e.getErrorCode(), "text/plain",
+                    new ByteArrayResource(e.getMessage().getBytes()), CacheResult.OTHER,
+                    runtimeStats);
+        } catch (RequestFilterException e) {
+            RequestFilterException reqE = (RequestFilterException) e;
+            reqE.setHttpInfoHeader(response);
+            GeoWebCacheUtils.writeFixedResponse(response, reqE.getResponseCode(),
+                    reqE.getContentType(), reqE.getResponse(), CacheResult.OTHER, runtimeStats);
+        } catch (OWSException e) {
+            OWSException owsE = (OWSException) e;
+            GeoWebCacheUtils.writeFixedResponse(response, owsE.getResponseCode(),
+                    owsE.getContentType(), owsE.getResponse(), CacheResult.OTHER, runtimeStats);
+        } catch (Exception e) {
+            if (!(e instanceof BadTileException) || log.isDebugEnabled()) {
+                log.error(e.getMessage() + " " + request.getRequestURL().toString());
+            }
+            GeoWebCacheUtils.writeErrorAsXML(response, 400, e.getMessage(), runtimeStats);
+            if (!(e instanceof GeoWebCacheException) || log.isDebugEnabled()) {
+                log.error(e.getMessage(), e);
+            }
+        }
+    }
+
 }
