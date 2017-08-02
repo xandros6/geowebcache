@@ -352,7 +352,7 @@ public class WMSLayer extends AbstractTileLayer implements ProxyLayer {
         // GridCalculator gridCalc = getGrid(tile.getSRS()).getGridCalculator();
 
         MimeType mimeType = tile.getMimeType();
-        Map<String, String> fullParameters = tile.getFullParameters();
+        Map<String, String> fullParameters = tile.getFilteringParameters();
         if (fullParameters.isEmpty()) {
             fullParameters = getDefaultParameterFilters();
         }

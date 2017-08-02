@@ -121,8 +121,8 @@ public class WMTSService extends Service  {
         }
         
         String encoding = request.getCharacterEncoding();
-        String[] keys = { "layer", "request", "style", "format", "tilematrixset", "tilematrix",
-                "tilerow", "tilecol" };
+        String[] keys = { "layer", "request", "style", "format", "infoformat", "tilematrixset", "tilematrix",
+                "tilerow", "tilecol", "i", "j" };
         Map<String, String> values = ServletUtils.selectedStringsFromMap(request.getParameterMap(),
                 encoding, keys);
         return getConveyor(request, response, values);
@@ -193,11 +193,10 @@ public class WMTSService extends Service  {
                     + " is not known.");
         }
 
-        Map<String, String> fullParameters;
+        Map<String, String[]> rawParameters = new HashMap<>(request.getParameterMap());
+        Map<String, String> filteringParameters;
         try {
-            
-            Map<String, String[]> rawParameters = new HashMap<>(request.getParameterMap());
-
+      
             /*
              * Merge values with request parameter
              */
@@ -212,7 +211,7 @@ public class WMTSService extends Service  {
                     break;
                 }
             }
-            fullParameters = tileLayer.getModifiableParameters(rawParameters, encoding);
+            filteringParameters = tileLayer.getModifiableParameters(rawParameters, encoding);
 
         } catch (GeoWebCacheException e) {
             throw new OWSException(500, "NoApplicableCode", "", e.getMessage()
@@ -233,8 +232,7 @@ public class WMTSService extends Service  {
                         "Unable to determine requested FORMAT, " + format);
             }
         } else {
-            String infoFormat = ServletUtils.stringFromMap(request.getParameterMap(),
-                    request.getCharacterEncoding(), "infoformat");
+            String infoFormat = values.get("infoformat");
             
             if (infoFormat == null) {
                 throw new OWSException(400, "MissingParameterValue", "INFOFORMAT",
@@ -314,7 +312,7 @@ public class WMTSService extends Service  {
         }
 
         ConveyorTile convTile = new ConveyorTile(sb, layer, gridSubset.getName(), tileIndex,
-                mimeType, fullParameters, request, response);
+                mimeType, rawParameters, filteringParameters, request, response);
 
         convTile.setTileLayer(tileLayer);
 
@@ -338,7 +336,7 @@ public class WMTSService extends Service  {
         if (controller!=null) servletPrefix=controller.getServletPrefix();
         
         String servletBase = ServletUtils.getServletBaseURL(conv.servletReq, servletPrefix);
-        String context = ServletUtils.getServletContextPath(conv.servletReq, SERVICE_PATH, servletPrefix);
+        String context = ServletUtils.getServletContextPath(conv.servletReq, new String[]{SERVICE_PATH, REST_PATH}, servletPrefix);
 
         if (tile.getHint() != null) {
             if (tile.getHint().equals("getcapabilities")) {

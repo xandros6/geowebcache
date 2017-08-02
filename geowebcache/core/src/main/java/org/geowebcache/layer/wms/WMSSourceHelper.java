@@ -71,7 +71,7 @@ public abstract class WMSSourceHelper {
 
         wmsParams.put("BBOX", bbox.toString());
 
-        Map<String, String> fullParameters = tile.getFullParameters();
+        Map<String, String> fullParameters = tile.getFilteringParameters();
         if (fullParameters.isEmpty()) {
             fullParameters = layer.getDefaultParameterFilters();
         }
@@ -105,7 +105,7 @@ public abstract class WMSSourceHelper {
 
         wmsParams.put("BBOX", bbox.toString());
 
-        Map<String, String> fullParameters = tile.getFullParameters();
+        Map<String, String> fullParameters = tile.getFilteringParameters();
         if (fullParameters.isEmpty()) {
             fullParameters = layer.getDefaultParameterFilters();
         }
