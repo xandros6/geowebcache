@@ -31,6 +31,8 @@ import org.geowebcache.layer.TileLayerDispatcher;
 import org.geowebcache.mime.ImageMime;
 import org.geowebcache.stats.RuntimeStats;
 import org.geowebcache.storage.DefaultStorageFinder;
+import org.geowebcache.util.ServletUtils;
+import org.springframework.http.MediaType;
 
 public final class GeoWebCacheUtils {
     
@@ -163,14 +165,14 @@ public final class GeoWebCacheUtils {
                 CacheResult.OTHER, runtimeStats);
     }
 
-    private static void writeFixedResponse(HttpServletResponse response, int httpCode, String contentType,
+    public static void writeFixedResponse(HttpServletResponse response, int httpCode, String contentType,
             Resource resource, CacheResult cacheRes, RuntimeStats runtimeStats) {
 
         int contentLength = (int) (resource == null ? -1 : resource.getSize());
         writeFixedResponse(response, httpCode, contentType, resource, cacheRes, contentLength, runtimeStats);
     }
 
-    private static void writeFixedResponse(HttpServletResponse response, int httpCode, String contentType,
+    public static void writeFixedResponse(HttpServletResponse response, int httpCode, String contentType,
             Resource resource, CacheResult cacheRes, int contentLength, RuntimeStats runtimeStats) {
 
         response.setStatus(httpCode);
@@ -243,6 +245,31 @@ public final class GeoWebCacheUtils {
         } finally {
             ch.close();
         }
+    }
+    
+    /**
+     * Wrapper method for writing an error back to the client, and logging it at the same time.
+     * 
+     * @param response where to write to
+     * @param httpCode the HTTP code to provide
+     * @param errorMsg the actual error message, human readable
+     */
+    public static void writeErrorPage(HttpServletResponse response, int httpCode, String errorMsg, RuntimeStats runtimeStats) {
+        log.debug(errorMsg);
+        errorMsg = "<html>\n" + ServletUtils.gwcHtmlHeader("../", "GWC Error") + "<body>\n"
+                + ServletUtils.gwcHtmlLogoLink("../") + "<h4>" + httpCode + ": "
+                + ServletUtils.disableHTMLTags(errorMsg) + "</h4>" + "</body></html>\n";
+        writePage(response, httpCode, errorMsg, runtimeStats, MediaType.TEXT_HTML_VALUE);
+    }
+    
+    public static void writeErrorAsXML(HttpServletResponse response, int httpCode, String errorMsg, RuntimeStats runtimeStats) {
+        log.debug(errorMsg);
+        writePage(response, httpCode, errorMsg, runtimeStats, MediaType.APPLICATION_XML_VALUE);
+    }
+
+    private static void writePage(HttpServletResponse response, int httpCode, String message, RuntimeStats runtimeStats, String contentType) {
+        Resource res = new ByteArrayResource(message.getBytes());
+        GeoWebCacheUtils.writeFixedResponse(response, httpCode, contentType, res, CacheResult.OTHER, runtimeStats);
     }
     
 }

@@ -258,7 +258,7 @@ public class GeoWebCacheDispatcher extends AbstractController {
             requestComps = parseRequest(normalizedURI);
             // requestComps = parseRequest(request.getRequestURI());
         } catch (GeoWebCacheException gwce) {
-            writeError(response, 400, gwce.getMessage());
+            GeoWebCacheUtils.writeErrorPage(response, 400, gwce.getMessage(), runtimeStats);
             return null;
         }
 
@@ -271,28 +271,28 @@ public class GeoWebCacheDispatcher extends AbstractController {
                     || requestComps[0].equalsIgnoreCase(TYPE_DEMO + "s")) {
                 handleDemoRequest(requestComps[1], request, response);
             } else {
-                writeError(response, 404, "Unknown path: " + requestComps[0]);
+                GeoWebCacheUtils.writeErrorPage(response, 404, "Unknown path: " + requestComps[0], runtimeStats);
             }
         } catch (HttpErrorCodeException e) {
-            writeFixedResponse(response, e.getErrorCode(), "text/plain", new ByteArrayResource(e
-                    .getMessage().getBytes()), CacheResult.OTHER);
+            GeoWebCacheUtils.writeFixedResponse(response, e.getErrorCode(), "text/plain", new ByteArrayResource(e
+                    .getMessage().getBytes()), CacheResult.OTHER, runtimeStats);
         } catch (RequestFilterException e) {
 
             RequestFilterException reqE = (RequestFilterException) e;
             reqE.setHttpInfoHeader(response);
 
-            writeFixedResponse(response, reqE.getResponseCode(), reqE.getContentType(),
-                    reqE.getResponse(), CacheResult.OTHER);
+            GeoWebCacheUtils.writeFixedResponse(response, reqE.getResponseCode(), reqE.getContentType(),
+                    reqE.getResponse(), CacheResult.OTHER, runtimeStats);
         } catch (OWSException e) {
             OWSException owsE = (OWSException) e;
-            writeFixedResponse(response, owsE.getResponseCode(), owsE.getContentType(),
-                    owsE.getResponse(), CacheResult.OTHER);
+            GeoWebCacheUtils.writeFixedResponse(response, owsE.getResponseCode(), owsE.getContentType(),
+                    owsE.getResponse(), CacheResult.OTHER, runtimeStats);
         } catch (Exception e) {
             if (!(e instanceof BadTileException) || log.isDebugEnabled()) {
                 log.error(e.getMessage() + " " + request.getRequestURL().toString());
             }
 
-            writeError(response, 400, e.getMessage());
+            GeoWebCacheUtils.writeErrorPage(response, 400, e.getMessage(), runtimeStats);
 
             if (!(e instanceof GeoWebCacheException) || log.isDebugEnabled()) {
                 e.printStackTrace();
@@ -455,7 +455,7 @@ public class GeoWebCacheDispatcher extends AbstractController {
         }
         str.append("</body></html>\n");
 
-        writePage(response, 200, str.toString());
+        GeoWebCacheUtils.writeErrorPage(response, 200, str.toString(), runtimeStats);
     }
 
     private void appendStorageLocations(StringBuilder str) {
@@ -507,150 +507,6 @@ public class GeoWebCacheDispatcher extends AbstractController {
         
         str.append("</tbody>");
         str.append("</table>\n");
-    }
-
-    /**
-     * Wrapper method for writing an error back to the client, and logging it at the same time.
-     * 
-     * @param response where to write to
-     * @param httpCode the HTTP code to provide
-     * @param errorMsg the actual error message, human readable
-     */
-    private void writeError(HttpServletResponse response, int httpCode, String errorMsg) {
-        log.debug(errorMsg);
-
-        errorMsg = "<html>\n" + ServletUtils.gwcHtmlHeader("../", "GWC Error") + "<body>\n"
-                + ServletUtils.gwcHtmlLogoLink("../") + "<h4>" + httpCode + ": "
-                + ServletUtils.disableHTMLTags(errorMsg) + "</h4>" + "</body></html>\n";
-        writePage(response, httpCode, errorMsg);
-    }
-
-    private void writePage(HttpServletResponse response, int httpCode, String message) {
-        Resource res = new ByteArrayResource(message.getBytes());
-        writeFixedResponse(response, httpCode, "text/html", res, CacheResult.OTHER);
-    }
-
-    /**
-     * Happy ending, sets the headers and writes the response back to the client.
-     */
-    private void writeData(ConveyorTile tile) throws IOException {
-        HttpServletResponse servletResp = tile.servletResp;
-        final HttpServletRequest servletReq = tile.servletReq;
-
-        final CacheResult cacheResult = tile.getCacheResult();
-        int httpCode = HttpServletResponse.SC_OK;
-        Resource blob = tile.getBlob();
-        String mimeType = tile.getMimeType().getMimeType(blob);
-
-        servletResp.setHeader("geowebcache-cache-result", String.valueOf(cacheResult));
-        servletResp.setHeader("geowebcache-tile-index", Arrays.toString(tile.getTileIndex()));
-        long[] tileIndex = tile.getTileIndex();
-        TileLayer layer = tile.getLayer();
-        GridSubset gridSubset = layer.getGridSubset(tile.getGridSetId());
-        BoundingBox tileBounds = gridSubset.boundsFromIndex(tileIndex);
-        servletResp.setHeader("geowebcache-tile-bounds", tileBounds.toString());
-        servletResp.setHeader("geowebcache-gridset", gridSubset.getName());
-        servletResp.setHeader("geowebcache-crs", gridSubset.getSRS().toString());
-
-        final long tileTimeStamp = tile.getTSCreated();
-        final String ifModSinceHeader = servletReq.getHeader("If-Modified-Since");
-        // commons-httpclient's DateUtil can encode and decode timestamps formatted as per RFC-1123,
-        // which is one of the three formats allowed for Last-Modified and If-Modified-Since headers
-        // (e.g. 'Sun, 06 Nov 1994 08:49:37 GMT'). See
-        // http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.3.1
-
-        final String lastModified = org.apache.commons.httpclient.util.DateUtil
-                .formatDate(new Date(tileTimeStamp));
-        servletResp.setHeader("Last-Modified", lastModified);
-
-        final Date ifModifiedSince;
-        if (ifModSinceHeader != null && ifModSinceHeader.length() > 0) {
-            try {
-                ifModifiedSince = DateUtil.parseDate(ifModSinceHeader);
-                // the HTTP header has second precision
-                long ifModSinceSeconds = 1000 * (ifModifiedSince.getTime() / 1000);
-                long tileTimeStampSeconds = 1000 * (tileTimeStamp / 1000);
-                if (ifModSinceSeconds >= tileTimeStampSeconds) {
-                    httpCode = HttpServletResponse.SC_NOT_MODIFIED;
-                    blob = null;
-                }
-            } catch (DateParseException e) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Can't parse client's If-Modified-Since header: '" + ifModSinceHeader
-                            + "'");
-                }
-            }
-        }
-
-        if (httpCode == HttpServletResponse.SC_OK && tile.getLayer().useETags()) {
-            String ifNoneMatch = servletReq.getHeader("If-None-Match");
-            String hexTag = Long.toHexString(tileTimeStamp);
-
-            if (ifNoneMatch != null) {
-                if (ifNoneMatch.equals(hexTag)) {
-                    httpCode = HttpServletResponse.SC_NOT_MODIFIED;
-                    blob = null;
-                }
-            }
-
-            // If we get here, we want ETags but the client did not have the tile.
-            servletResp.setHeader("ETag", hexTag);
-        }
-
-        int contentLength = (int) (blob == null ? -1 : blob.getSize());
-        writeFixedResponse(servletResp, httpCode, mimeType, blob, cacheResult, contentLength);
-    }
-
-    /**
-     * Writes a transparent, 8 bit PNG to avoid having clients like OpenLayers showing lots of pink
-     * tiles
-     */
-    private void writeEmpty(ConveyorTile tile, String message) {
-        tile.servletResp.setHeader("geowebcache-message", message);
-        TileLayer layer = tile.getLayer();
-        if (layer != null) {
-            layer.setExpirationHeader(tile.servletResp, (int) tile.getTileIndex()[2]);
-
-            if (layer.useETags()) {
-                String ifNoneMatch = tile.servletReq.getHeader("If-None-Match");
-                if (ifNoneMatch != null && ifNoneMatch.equals("gwc-blank-tile")) {
-                    tile.servletResp.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
-                    return;
-                } else {
-                    tile.servletResp.setHeader("ETag", "gwc-blank-tile");
-                }
-            }
-        }
-
-        writeFixedResponse(tile.servletResp, 200, ImageMime.png.getMimeType(), this.blankTile,
-                CacheResult.OTHER);
-    }
-
-    private void writeFixedResponse(HttpServletResponse response, int httpCode, String contentType,
-            Resource resource, CacheResult cacheRes) {
-
-        int contentLength = (int) (resource == null ? -1 : resource.getSize());
-        writeFixedResponse(response, httpCode, contentType, resource, cacheRes, contentLength);
-    }
-
-    private void writeFixedResponse(HttpServletResponse response, int httpCode, String contentType,
-            Resource resource, CacheResult cacheRes, int contentLength) {
-
-        response.setStatus(httpCode);
-        response.setContentType(contentType);
-
-        response.setContentLength((int) contentLength);
-        if (resource != null) {
-            try {
-                OutputStream os = response.getOutputStream();
-                resource.transferTo(Channels.newChannel(os));
-
-                runtimeStats.log(contentLength, cacheRes);
-
-            } catch (IOException ioe) {
-                log.debug("Caught IOException: " + ioe.getMessage() + "\n\n" + ioe.toString());
-            }
-        }
     }
 
     /**
