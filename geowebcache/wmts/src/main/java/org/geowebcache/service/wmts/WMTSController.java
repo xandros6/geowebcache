@@ -132,7 +132,7 @@ public class WMTSController {
             if (i != null)
                 values.put("i", i);
 
-            if (!services.isEmpty()) {
+            //if (!services.isEmpty()) {
                 WMTSService service = services.get(0);
                 conv = service.getConveyor(request, response, values);
 
@@ -151,7 +151,7 @@ public class WMTSController {
                             defaultStorageFinder, runtimeStats);
                 }
 
-            }
+            //}
 
         } catch (HttpErrorCodeException e) {
             GeoWebCacheUtils.writeFixedResponse(response, e.getErrorCode(), "text/plain",
