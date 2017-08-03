@@ -268,7 +268,10 @@ public final class GeoWebCacheUtils {
     }
 
     private static void writePage(HttpServletResponse response, int httpCode, String message, RuntimeStats runtimeStats, String contentType) {
-        Resource res = new ByteArrayResource(message.getBytes());
+        Resource res = null;
+        if(message != null){
+            res = new ByteArrayResource(message.getBytes());
+        }
         GeoWebCacheUtils.writeFixedResponse(response, httpCode, contentType, res, CacheResult.OTHER, runtimeStats);
     }
     
