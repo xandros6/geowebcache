@@ -21,6 +21,7 @@ package org.geowebcache.service.wmts;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -67,10 +68,11 @@ public class WMTSController {
         manageCapabilitiesRequest(request, response);
     }
 
-    @RequestMapping(value = "/{layer}/{style}/{tileMatrixSet}/{tileMatrix}/{tileRow}/{tileCol}", method = RequestMethod.GET, params = {
-            "format" })
+    @RequestMapping(value = { "/{layer}/{style}/{tileMatrixSet}/{tileMatrix}/{tileRow}/{tileCol}",
+            "/{layer}/{tileMatrixSet}/{tileMatrix}/{tileRow}/{tileCol}" }, method = RequestMethod.GET, params = {
+                    "format" })
     public void getTile(HttpServletRequest request, HttpServletResponse response,
-            @PathVariable String layer, @PathVariable String style,
+            @PathVariable String layer, @PathVariable Optional<String> style,
             @PathVariable String tileMatrixSet, @PathVariable String tileMatrix,
             @PathVariable String tileRow, @PathVariable String tileCol,
             @RequestParam("format") String format, @RequestParam Map<String, String> params) {
@@ -80,10 +82,12 @@ public class WMTSController {
 
     }
 
-    @RequestMapping(value = "/{layer}/{style}/{tileMatrixSet}/{tileMatrix}/{tileRow}/{tileCol}/{j}/{i}", method = RequestMethod.GET, params = {
-            "format" })
+    @RequestMapping(value = {
+            "/{layer}/{style}/{tileMatrixSet}/{tileMatrix}/{tileRow}/{tileCol}/{j}/{i}",
+            "/{layer}/{tileMatrixSet}/{tileMatrix}/{tileRow}/{tileCol}/{j}/{i}" }, method = RequestMethod.GET, params = {
+                    "format" })
     public void getFeatureInfo(HttpServletRequest request, HttpServletResponse response,
-            @PathVariable String layer, @PathVariable String style,
+            @PathVariable String layer, @PathVariable Optional<String> style,
             @PathVariable String tileMatrixSet, @PathVariable String tileMatrix,
             @PathVariable String tileRow, @PathVariable String tileCol, @PathVariable String j,
             @PathVariable String i, @RequestParam("format") String format,
@@ -95,14 +99,14 @@ public class WMTSController {
 
     private void manageCapabilitiesRequest(HttpServletRequest request,
             HttpServletResponse response) {
-        manageFeatureRequest(request, response, "getcapabilities", null, null, null, null, null,
-                null, null, null, null, null, null);
+        manageFeatureRequest(request, response, "getcapabilities", null, Optional.empty(), null,
+                null, null, null, null, null, null, null, null);
     }
 
     private void manageFeatureRequest(HttpServletRequest request, HttpServletResponse response,
-            String type, String layer, String style, String tileMatrixSet, String tileMatrix,
-            String tileRow, String tileCol, String j, String i, String format, String infoformat,
-            Map<String, String> params) {
+            String type, String layer, Optional<String> style, String tileMatrixSet,
+            String tileMatrix, String tileRow, String tileCol, String j, String i, String format,
+            String infoformat, Map<String, String> params) {
         try {
             Conveyor conv = null;
 
@@ -113,8 +117,8 @@ public class WMTSController {
                 values.put("layer", layer);
             if (type != null)
                 values.put("request", type);
-            if (style != null)
-                values.put("style", style);
+            if (style.isPresent())
+                values.put("style", style.get());
             if (tileMatrixSet != null)
                 values.put("tilematrixset", tileMatrixSet);
             if (tileMatrix != null)
@@ -132,26 +136,26 @@ public class WMTSController {
             if (i != null)
                 values.put("i", i);
 
-            //if (!services.isEmpty()) {
-                WMTSService service = services.get(0);
-                conv = service.getConveyor(request, response, values);
+            // if (!services.isEmpty()) {
+            WMTSService service = services.get(0);
+            conv = service.getConveyor(request, response, values);
 
-                final String layerName = conv.getLayerId();
-                if (layerName != null && !tileLayerDispatcher.getTileLayer(layerName).isEnabled()) {
-                    throw new OWSException(400, "InvalidParameterValue", "LAYERS",
-                            "Layer '" + layerName + "' is disabled");
-                }
+            final String layerName = conv.getLayerId();
+            if (layerName != null && !tileLayerDispatcher.getTileLayer(layerName).isEnabled()) {
+                throw new OWSException(400, "InvalidParameterValue", "LAYERS",
+                        "Layer '" + layerName + "' is disabled");
+            }
 
-                // Check where this should be dispatched
-                if (conv.reqHandler == Conveyor.RequestHandler.SERVICE) {
-                    // A3 The service object takes it from here
-                    service.handleRequest(conv);
-                } else {
-                    GeoWebCacheUtils.writeTile(conv, layerName, tileLayerDispatcher,
-                            defaultStorageFinder, runtimeStats);
-                }
+            // Check where this should be dispatched
+            if (conv.reqHandler == Conveyor.RequestHandler.SERVICE) {
+                // A3 The service object takes it from here
+                service.handleRequest(conv);
+            } else {
+                GeoWebCacheUtils.writeTile(conv, layerName, tileLayerDispatcher,
+                        defaultStorageFinder, runtimeStats);
+            }
 
-            //}
+            // }
 
         } catch (HttpErrorCodeException e) {
             GeoWebCacheUtils.writeFixedResponse(response, e.getErrorCode(), "text/plain",
