@@ -35,13 +35,16 @@ import org.geowebcache.util.ServletUtils;
 import org.springframework.http.MediaType;
 
 public final class GeoWebCacheUtils {
-    
+
     private static Log log = LogFactory.getLog(GeoWebCacheUtils.class);
 
     private GeoWebCacheUtils() {
     }
 
-    public static void writeTile(Conveyor conv, String layerName, TileLayerDispatcher tileLayerDispatcher, DefaultStorageFinder defaultStorageFinder, RuntimeStats runtimeStats) throws GeoWebCacheException, RequestFilterException, IOException{
+    public static void writeTile(Conveyor conv, String layerName,
+            TileLayerDispatcher tileLayerDispatcher, DefaultStorageFinder defaultStorageFinder,
+            RuntimeStats runtimeStats)
+                    throws GeoWebCacheException, RequestFilterException, IOException {
         ConveyorTile convTile = (ConveyorTile) conv;
 
         // B3) Get the configuration that has to respond to this request
@@ -68,7 +71,7 @@ public final class GeoWebCacheUtils {
             writeEmpty(defaultStorageFinder, convTile, e.getMessage(), runtimeStats);
         }
     }
-    
+
     /**
      * Happy ending, sets the headers and writes the response back to the client.
      */
@@ -137,14 +140,16 @@ public final class GeoWebCacheUtils {
         }
 
         int contentLength = (int) (blob == null ? -1 : blob.getSize());
-        writeFixedResponse(servletResp, httpCode, mimeType, blob, cacheResult, contentLength, runtimeStats);
+        writeFixedResponse(servletResp, httpCode, mimeType, blob, cacheResult, contentLength,
+                runtimeStats);
     }
 
     /**
      * Writes a transparent, 8 bit PNG to avoid having clients like OpenLayers showing lots of pink
      * tiles
      */
-    private static void writeEmpty(DefaultStorageFinder defaultStorageFinder, ConveyorTile tile, String message, RuntimeStats runtimeStats) {
+    private static void writeEmpty(DefaultStorageFinder defaultStorageFinder, ConveyorTile tile,
+            String message, RuntimeStats runtimeStats) {
         tile.servletResp.setHeader("geowebcache-message", message);
         TileLayer layer = tile.getLayer();
         if (layer != null) {
@@ -161,19 +166,22 @@ public final class GeoWebCacheUtils {
             }
         }
 
-        writeFixedResponse(tile.servletResp, 200, ImageMime.png.getMimeType(), loadBlankTile(defaultStorageFinder),
-                CacheResult.OTHER, runtimeStats);
+        writeFixedResponse(tile.servletResp, 200, ImageMime.png.getMimeType(),
+                loadBlankTile(defaultStorageFinder), CacheResult.OTHER, runtimeStats);
     }
 
-    public static void writeFixedResponse(HttpServletResponse response, int httpCode, String contentType,
-            Resource resource, CacheResult cacheRes, RuntimeStats runtimeStats) {
+    public static void writeFixedResponse(HttpServletResponse response, int httpCode,
+            String contentType, Resource resource, CacheResult cacheRes,
+            RuntimeStats runtimeStats) {
 
         int contentLength = (int) (resource == null ? -1 : resource.getSize());
-        writeFixedResponse(response, httpCode, contentType, resource, cacheRes, contentLength, runtimeStats);
+        writeFixedResponse(response, httpCode, contentType, resource, cacheRes, contentLength,
+                runtimeStats);
     }
 
-    public static void writeFixedResponse(HttpServletResponse response, int httpCode, String contentType,
-            Resource resource, CacheResult cacheRes, int contentLength, RuntimeStats runtimeStats) {
+    public static void writeFixedResponse(HttpServletResponse response, int httpCode,
+            String contentType, Resource resource, CacheResult cacheRes, int contentLength,
+            RuntimeStats runtimeStats) {
 
         response.setStatus(httpCode);
         response.setContentType(contentType);
@@ -191,8 +199,8 @@ public final class GeoWebCacheUtils {
             }
         }
     }
-    
-    private static ByteArrayResource loadBlankTile( DefaultStorageFinder defaultStorageFinder) {
+
+    private static ByteArrayResource loadBlankTile(DefaultStorageFinder defaultStorageFinder) {
         ByteArrayResource blankTile = null;
         String blankTilePath = defaultStorageFinder
                 .findEnvVar(DefaultStorageFinder.GWC_BLANK_TILE_PATH);
@@ -205,7 +213,7 @@ public final class GeoWebCacheUtils {
                 try {
                     loadBlankTile(blankTile, fh.toURI().toURL());
                 } catch (IOException e) {
-                    log.error(e.getMessage(),e);
+                    log.error(e.getMessage(), e);
                 }
 
                 if (fileSize == blankTile.getSize()) {
@@ -220,7 +228,7 @@ public final class GeoWebCacheUtils {
         }
 
         // Use the built-in one:
-        if(blankTile == null){
+        if (blankTile == null) {
             try {
                 URL url = GeoWebCacheDispatcher.class.getResource("blank.png");
                 blankTile = new ByteArrayResource();
@@ -231,7 +239,7 @@ public final class GeoWebCacheUtils {
                 log.error(ioe.getMessage());
             }
         }
-        
+
         return blankTile;
     }
 
@@ -246,33 +254,40 @@ public final class GeoWebCacheUtils {
             ch.close();
         }
     }
-    
+
     /**
      * Wrapper method for writing an error back to the client, and logging it at the same time.
      * 
-     * @param response where to write to
-     * @param httpCode the HTTP code to provide
-     * @param errorMsg the actual error message, human readable
+     * @param response
+     *            where to write to
+     * @param httpCode
+     *            the HTTP code to provide
+     * @param errorMsg
+     *            the actual error message, human readable
      */
-    public static void writeErrorPage(HttpServletResponse response, int httpCode, String errorMsg, RuntimeStats runtimeStats) {
+    public static void writeErrorPage(HttpServletResponse response, int httpCode, String errorMsg,
+            RuntimeStats runtimeStats) {
         log.debug(errorMsg);
         errorMsg = "<html>\n" + ServletUtils.gwcHtmlHeader("../", "GWC Error") + "<body>\n"
                 + ServletUtils.gwcHtmlLogoLink("../") + "<h4>" + httpCode + ": "
                 + ServletUtils.disableHTMLTags(errorMsg) + "</h4>" + "</body></html>\n";
         writePage(response, httpCode, errorMsg, runtimeStats, MediaType.TEXT_HTML_VALUE);
     }
-    
-    public static void writeErrorAsXML(HttpServletResponse response, int httpCode, String errorMsg, RuntimeStats runtimeStats) {
+
+    public static void writeErrorAsXML(HttpServletResponse response, int httpCode, String errorMsg,
+            RuntimeStats runtimeStats) {
         log.debug(errorMsg);
         writePage(response, httpCode, errorMsg, runtimeStats, MediaType.APPLICATION_XML_VALUE);
     }
 
-    private static void writePage(HttpServletResponse response, int httpCode, String message, RuntimeStats runtimeStats, String contentType) {
+    public static void writePage(HttpServletResponse response, int httpCode, String message,
+            RuntimeStats runtimeStats, String contentType) {
         Resource res = null;
-        if(message != null){
+        if (message != null) {
             res = new ByteArrayResource(message.getBytes());
         }
-        GeoWebCacheUtils.writeFixedResponse(response, httpCode, contentType, res, CacheResult.OTHER, runtimeStats);
+        GeoWebCacheUtils.writeFixedResponse(response, httpCode, contentType, res, CacheResult.OTHER,
+                runtimeStats);
     }
-    
+
 }

@@ -58,6 +58,7 @@ import org.geowebcache.storage.StorageBroker;
 import org.geowebcache.storage.blobstore.memory.CacheStatistics;
 import org.geowebcache.storage.blobstore.memory.MemoryBlobStore;
 import org.geowebcache.util.ServletUtils;
+import org.springframework.http.MediaType;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.AbstractController;
 
@@ -442,7 +443,8 @@ public class GeoWebCacheDispatcher extends AbstractController {
         }
         str.append("</body></html>\n");
 
-        GeoWebCacheUtils.writeErrorPage(response, 200, str.toString(), runtimeStats);
+        GeoWebCacheUtils.writePage(response, 200, str.toString(), runtimeStats,
+                MediaType.TEXT_HTML_VALUE);
     }
 
     private void appendStorageLocations(StringBuilder str) {
