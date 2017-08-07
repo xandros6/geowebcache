@@ -16,10 +16,15 @@
  */
 package org.geowebcache.service.wmts;
 
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -27,19 +32,29 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.imageio.ImageIO;
+
 import org.geowebcache.GeoWebCacheExtensions;
 import org.geowebcache.config.XMLGridSubset;
-import org.geowebcache.filter.parameters.ParameterFilter;
+import org.geowebcache.config.legends.LegendInfo;
+import org.geowebcache.config.legends.LegendInfoBuilder;
+import org.geowebcache.conveyor.ConveyorTile;
+import org.geowebcache.filter.parameters.StringParameterFilter;
+import org.geowebcache.grid.BoundingBox;
 import org.geowebcache.grid.GridSet;
 import org.geowebcache.grid.GridSetBroker;
 import org.geowebcache.grid.GridSubset;
 import org.geowebcache.grid.SRS;
+import org.geowebcache.io.ByteArrayResource;
+import org.geowebcache.io.Resource;
 import org.geowebcache.layer.TileLayer;
 import org.geowebcache.layer.TileLayerDispatcher;
 import org.geowebcache.mime.MimeType;
 import org.geowebcache.stats.RuntimeStats;
 import org.geowebcache.storage.DefaultStorageFinder;
 import org.geowebcache.storage.StorageBroker;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -51,7 +66,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupp
 @ComponentScan({ "org.geowebcache.service.wmts" })
 @EnableWebMvc
 @Profile("test")
-public class WMTSRestWebConfig extends WebMvcConfigurationSupport {
+class WMTSRestWebConfig extends WebMvcConfigurationSupport {
 
     GridSetBroker broker = new GridSetBroker(true, true);
 
@@ -72,6 +87,19 @@ public class WMTSRestWebConfig extends WebMvcConfigurationSupport {
                 "EPSG:4326");
         String layerName = "mockLayer";
         TileLayer tileLayer = mock(TileLayer.class);
+
+        StringParameterFilter styles = new StringParameterFilter();
+        styles.setKey("STYLES");
+        styles.setValues(Arrays.asList("style-a", "style-b"));
+        when(tileLayer.getParameterFilters()).thenReturn(Collections.singletonList(styles));
+
+        LegendInfo legendInfo2 = new LegendInfoBuilder().withStyleName("styla-b-legend")
+                .withWidth(125).withHeight(130).withFormat("image/png")
+                .withCompleteUrl("https://some-url?some-parameter=value3&another-parameter=value4")
+                .withMinScale(5000D).withMaxScale(10000D).build();
+        when(tileLayer.getLayerLegendsInfo())
+                .thenReturn(Collections.singletonMap("style-b", legendInfo2));
+
         when(tld.getTileLayer(eq(layerName))).thenReturn(tileLayer);
         when(tileLayer.getName()).thenReturn(layerName);
         when(tileLayer.isEnabled()).thenReturn(true);
@@ -115,9 +143,28 @@ public class WMTSRestWebConfig extends WebMvcConfigurationSupport {
         }
         when(tileLayer.getGridSubsets()).thenReturn(subsets.keySet());
 
-        when(tileLayer.getParameterFilters()).thenReturn(Collections.<ParameterFilter> emptyList());
-
         when(tld.getLayerList()).thenReturn(Arrays.asList(tileLayer));
+
+        when(tileLayer.getTile(any(ConveyorTile.class))).thenAnswer(new Answer<ConveyorTile>() {
+            @Override
+            public ConveyorTile answer(InvocationOnMock invocation) throws Throwable {
+                ConveyorTile sourceTile = (ConveyorTile) invocation.getArguments()[0];
+                final File imgPath = new File(getClass().getResource("/image.png").toURI());
+                BufferedImage originalImage = ImageIO.read(imgPath);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(originalImage, "png", baos);
+                sourceTile.setBlob(new ByteArrayResource(baos.toByteArray()));
+                return sourceTile;
+            }
+        });
+
+        when(tileLayer.getFeatureInfo(any(ConveyorTile.class), any(BoundingBox.class), anyInt(),
+                anyInt(), anyInt(), anyInt())).thenAnswer(new Answer<Resource>() {
+                    @Override
+                    public Resource answer(InvocationOnMock invocation) throws Throwable {
+                        return new ByteArrayResource(new byte[0]);
+                    }
+                });
 
         return tld;
     }
@@ -131,16 +178,6 @@ public class WMTSRestWebConfig extends WebMvcConfigurationSupport {
     public WMTSService wmtsService() throws Exception {
         return new WMTSService(mock(StorageBroker.class), tileLayerDispatcher(), broker,
                 mock(RuntimeStats.class));
-        // return mock(WMTSService.class);
     }
-
-    /*
-     * @Bean public TileLayerDispatcher tileLayerDispatcher() throws GeoWebCacheException {
-     * TileLayerDispatcher tileLayerDispatcher = mock(TileLayerDispatcher.class); TileLayer
-     * tileLayer = mock(TileLayer.class);
-     * when(tileLayer.getBlobStoreId()).thenReturn("mbtiles-store");
-     * when(tileLayerDispatcher.getTileLayer("europe")).thenReturn(tileLayer); return
-     * tileLayerDispatcher; }
-     */
 
 }
