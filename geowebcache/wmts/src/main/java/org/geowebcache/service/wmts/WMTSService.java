@@ -140,13 +140,6 @@ public class WMTSService extends Service  {
             }
         }
         
-        // no extension wants to handle this request
-        //String encoding = request.getCharacterEncoding();
-        //String[] keys = { "layer", "request", "style", "format", "tilematrixset", "tilematrix",
-        //        "tilerow", "tilecol" };
-        //Map<String, String> values = ServletUtils.selectedStringsFromMap(request.getParameterMap(),
-        //        encoding, keys);
-
         String req = values.get("request");
         if (req == null) {
             // OWSException(httpCode, exceptionCode, locator, exceptionText);

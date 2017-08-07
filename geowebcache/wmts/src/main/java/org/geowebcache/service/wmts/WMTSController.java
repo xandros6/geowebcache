@@ -136,7 +136,6 @@ public class WMTSController {
             if (i != null)
                 values.put("i", i);
 
-            // if (!services.isEmpty()) {
             WMTSService service = services.get(0);
             conv = service.getConveyor(request, response, values);
 
@@ -155,21 +154,22 @@ public class WMTSController {
                         defaultStorageFinder, runtimeStats);
             }
 
-            // }
-
         } catch (HttpErrorCodeException e) {
             GeoWebCacheUtils.writeFixedResponse(response, e.getErrorCode(), "text/plain",
                     new ByteArrayResource(e.getMessage().getBytes()), CacheResult.OTHER,
                     runtimeStats);
+            log.error(e.getMessage(), e);
         } catch (RequestFilterException e) {
             RequestFilterException reqE = (RequestFilterException) e;
             reqE.setHttpInfoHeader(response);
             GeoWebCacheUtils.writeFixedResponse(response, reqE.getResponseCode(),
                     reqE.getContentType(), reqE.getResponse(), CacheResult.OTHER, runtimeStats);
+            log.error(e.getMessage(), e);
         } catch (OWSException e) {
             OWSException owsE = (OWSException) e;
             GeoWebCacheUtils.writeFixedResponse(response, owsE.getResponseCode(),
                     owsE.getContentType(), owsE.getResponse(), CacheResult.OTHER, runtimeStats);
+            log.error(e.getMessage(), e);
         } catch (Exception e) {
             if (!(e instanceof BadTileException) || log.isDebugEnabled()) {
                 log.error(e.getMessage() + " " + request.getRequestURL().toString());
