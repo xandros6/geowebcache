@@ -38,6 +38,7 @@ import org.geowebcache.mime.MimeType;
 import org.geowebcache.storage.StorageBroker;
 import org.geowebcache.storage.StorageException;
 import org.geowebcache.storage.TileObject;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * Represents a request for a tile and carries the information needed to complete it.
@@ -57,8 +58,15 @@ public class ConveyorTile extends Conveyor implements TileResponseReceiver {
 
     TileObject stObj = null;
 
+    /*
+     * Stores all raw values coming form request both as path variables or request parameters
+     */
     private Map<String, String[]> fullParameters;
-    
+
+    /*
+     * Stores values coming form request both as path variable or request parameters filtered by
+     * AbstractTileLayer.getParameterFilters()
+     */
     private Map<String, String> filteringParameters;
 
     private boolean isMetaTileCacheOnly;
@@ -69,20 +77,8 @@ public class ConveyorTile extends Conveyor implements TileResponseReceiver {
     }
 
     /**
-     // @deprecated as of 1.2.5, use
-     *             {@link #ConveyorTile(StorageBroker, String, String, long[], MimeType, Map, HttpServletRequest, HttpServletResponse)}
-     *             instead. This method just calls it with the provided {@code fullParameters} and
-     *             will be removed soon
+     * This constructor is used for an incoming request, with fullParameters
      */
-    /*
-    @Deprecated
-    public ConveyorTile(StorageBroker sb, String layerId, String gridSetId, long[] tileIndex,
-            MimeType mimeType, Map<String, String> fullParameters, 
-            Map<String, String> modifiedParameters, HttpServletRequest servletReq,
-            HttpServletResponse servletResp) {
-        this(sb, layerId, gridSetId, tileIndex, mimeType, fullParameters, servletReq, servletResp);
-    }*/
-
     public ConveyorTile(StorageBroker sb, String layerId, String gridSetId, long[] tileIndex,
             MimeType mimeType, Map<String, String[]> fullParameters, Map<String, String> filteringParameters, 
             HttpServletRequest servletReq, HttpServletResponse servletResp) {

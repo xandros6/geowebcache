@@ -30,7 +30,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.geowebcache.GeoWebCacheException;
 import org.geowebcache.GeoWebCacheExtensions;
-import org.geowebcache.GeoWebCacheUtils;
 import org.geowebcache.conveyor.Conveyor;
 import org.geowebcache.conveyor.Conveyor.CacheResult;
 import org.geowebcache.filter.request.RequestFilterException;
@@ -41,6 +40,7 @@ import org.geowebcache.service.HttpErrorCodeException;
 import org.geowebcache.service.OWSException;
 import org.geowebcache.stats.RuntimeStats;
 import org.geowebcache.storage.DefaultStorageFinder;
+import org.geowebcache.util.ResponseUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -75,10 +75,10 @@ public class WMTSController {
             @PathVariable String layer, @PathVariable Optional<String> style,
             @PathVariable String tileMatrixSet, @PathVariable String tileMatrix,
             @PathVariable String tileRow, @PathVariable String tileCol,
-            @RequestParam("format") String format, @RequestParam Map<String, String> params) {
+            @RequestParam("format") String format) {
 
-        manageFeatureRequest(request, response, "gettile", layer, style, tileMatrixSet, tileMatrix,
-                tileRow, tileCol, null, null, format, null, params);
+        manageRequest(request, response, "gettile", layer, style, tileMatrixSet, tileMatrix,
+                tileRow, tileCol, null, null, format, null);
 
     }
 
@@ -93,20 +93,20 @@ public class WMTSController {
             @PathVariable String i, @RequestParam("format") String format,
             @RequestParam Map<String, String> params) {
 
-        manageFeatureRequest(request, response, "getfeatureinfo", layer, style, tileMatrixSet,
-                tileMatrix, tileRow, tileCol, j, i, null, format, params);
+        manageRequest(request, response, "getfeatureinfo", layer, style, tileMatrixSet,
+                tileMatrix, tileRow, tileCol, j, i, null, format);
     }
 
     private void manageCapabilitiesRequest(HttpServletRequest request,
             HttpServletResponse response) {
-        manageFeatureRequest(request, response, "getcapabilities", null, Optional.empty(), null,
-                null, null, null, null, null, null, null, null);
+        manageRequest(request, response, "getcapabilities", null, Optional.empty(), null,
+                null, null, null, null, null, null, null);
     }
 
-    private void manageFeatureRequest(HttpServletRequest request, HttpServletResponse response,
+    private void manageRequest(HttpServletRequest request, HttpServletResponse response,
             String type, String layer, Optional<String> style, String tileMatrixSet,
             String tileMatrix, String tileRow, String tileCol, String j, String i, String format,
-            String infoformat, Map<String, String> params) {
+            String infoformat) {
         try {
             Conveyor conv = null;
 
@@ -150,31 +150,31 @@ public class WMTSController {
                 // A3 The service object takes it from here
                 service.handleRequest(conv);
             } else {
-                GeoWebCacheUtils.writeTile(conv, layerName, tileLayerDispatcher,
+                ResponseUtils.writeTile(conv, layerName, tileLayerDispatcher,
                         defaultStorageFinder, runtimeStats);
             }
 
         } catch (HttpErrorCodeException e) {
-            GeoWebCacheUtils.writeFixedResponse(response, e.getErrorCode(), "text/plain",
+            ResponseUtils.writeFixedResponse(response, e.getErrorCode(), "text/plain",
                     new ByteArrayResource(e.getMessage().getBytes()), CacheResult.OTHER,
                     runtimeStats);
             log.error(e.getMessage(), e);
         } catch (RequestFilterException e) {
             RequestFilterException reqE = (RequestFilterException) e;
             reqE.setHttpInfoHeader(response);
-            GeoWebCacheUtils.writeFixedResponse(response, reqE.getResponseCode(),
+            ResponseUtils.writeFixedResponse(response, reqE.getResponseCode(),
                     reqE.getContentType(), reqE.getResponse(), CacheResult.OTHER, runtimeStats);
             log.error(e.getMessage(), e);
         } catch (OWSException e) {
             OWSException owsE = (OWSException) e;
-            GeoWebCacheUtils.writeFixedResponse(response, owsE.getResponseCode(),
+            ResponseUtils.writeFixedResponse(response, owsE.getResponseCode(),
                     owsE.getContentType(), owsE.getResponse(), CacheResult.OTHER, runtimeStats);
             log.error(e.getMessage(), e);
         } catch (Exception e) {
             if (!(e instanceof BadTileException) || log.isDebugEnabled()) {
                 log.error(e.getMessage() + " " + request.getRequestURL().toString());
             }
-            GeoWebCacheUtils.writeErrorAsXML(response, 400, e.getMessage(), runtimeStats);
+            ResponseUtils.writeErrorAsXML(response, 400, e.getMessage(), runtimeStats);
             if (!(e instanceof GeoWebCacheException) || log.isDebugEnabled()) {
                 log.error(e.getMessage(), e);
             }

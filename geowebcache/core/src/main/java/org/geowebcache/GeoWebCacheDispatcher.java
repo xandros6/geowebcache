@@ -57,6 +57,7 @@ import org.geowebcache.storage.DefaultStorageFinder;
 import org.geowebcache.storage.StorageBroker;
 import org.geowebcache.storage.blobstore.memory.CacheStatistics;
 import org.geowebcache.storage.blobstore.memory.MemoryBlobStore;
+import org.geowebcache.util.ResponseUtils;
 import org.geowebcache.util.ServletUtils;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.ModelAndView;
@@ -246,7 +247,7 @@ public class GeoWebCacheDispatcher extends AbstractController {
             requestComps = parseRequest(normalizedURI);
             // requestComps = parseRequest(request.getRequestURI());
         } catch (GeoWebCacheException gwce) {
-            GeoWebCacheUtils.writeErrorPage(response, 400, gwce.getMessage(), runtimeStats);
+            ResponseUtils.writeErrorPage(response, 400, gwce.getMessage(), runtimeStats);
             return null;
         }
 
@@ -259,28 +260,28 @@ public class GeoWebCacheDispatcher extends AbstractController {
                     || requestComps[0].equalsIgnoreCase(TYPE_DEMO + "s")) {
                 handleDemoRequest(requestComps[1], request, response);
             } else {
-                GeoWebCacheUtils.writeErrorPage(response, 404, "Unknown path: " + requestComps[0], runtimeStats);
+                ResponseUtils.writeErrorPage(response, 404, "Unknown path: " + requestComps[0], runtimeStats);
             }
         } catch (HttpErrorCodeException e) {
-            GeoWebCacheUtils.writeFixedResponse(response, e.getErrorCode(), "text/plain", new ByteArrayResource(e
+            ResponseUtils.writeFixedResponse(response, e.getErrorCode(), "text/plain", new ByteArrayResource(e
                     .getMessage().getBytes()), CacheResult.OTHER, runtimeStats);
         } catch (RequestFilterException e) {
 
             RequestFilterException reqE = (RequestFilterException) e;
             reqE.setHttpInfoHeader(response);
 
-            GeoWebCacheUtils.writeFixedResponse(response, reqE.getResponseCode(), reqE.getContentType(),
+            ResponseUtils.writeFixedResponse(response, reqE.getResponseCode(), reqE.getContentType(),
                     reqE.getResponse(), CacheResult.OTHER, runtimeStats);
         } catch (OWSException e) {
             OWSException owsE = (OWSException) e;
-            GeoWebCacheUtils.writeFixedResponse(response, owsE.getResponseCode(), owsE.getContentType(),
+            ResponseUtils.writeFixedResponse(response, owsE.getResponseCode(), owsE.getContentType(),
                     owsE.getResponse(), CacheResult.OTHER, runtimeStats);
         } catch (Exception e) {
             if (!(e instanceof BadTileException) || log.isDebugEnabled()) {
                 log.error(e.getMessage() + " " + request.getRequestURL().toString());
             }
 
-            GeoWebCacheUtils.writeErrorPage(response, 400, e.getMessage(), runtimeStats);
+            ResponseUtils.writeErrorPage(response, 400, e.getMessage(), runtimeStats);
 
             if (!(e instanceof GeoWebCacheException) || log.isDebugEnabled()) {
                 e.printStackTrace();
@@ -346,7 +347,7 @@ public class GeoWebCacheDispatcher extends AbstractController {
             // A3 The service object takes it from here
             service.handleRequest(conv);
         } else {
-            GeoWebCacheUtils.writeTile(conv, layerName, tileLayerDispatcher, defaultStorageFinder, runtimeStats);
+            ResponseUtils.writeTile(conv, layerName, tileLayerDispatcher, defaultStorageFinder, runtimeStats);
         }
     }
 
@@ -443,7 +444,7 @@ public class GeoWebCacheDispatcher extends AbstractController {
         }
         str.append("</body></html>\n");
 
-        GeoWebCacheUtils.writePage(response, 200, str.toString(), runtimeStats,
+        ResponseUtils.writePage(response, 200, str.toString(), runtimeStats,
                 MediaType.TEXT_HTML_VALUE);
     }
 

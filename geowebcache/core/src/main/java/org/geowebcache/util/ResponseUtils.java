@@ -1,4 +1,22 @@
-package org.geowebcache;
+/**
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * 
+ * @author Sandro Salari, GeoSolutions S.A.S., Copyright 2017
+ * 
+ */
+
+package org.geowebcache.util;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,6 +35,8 @@ import org.apache.commons.httpclient.util.DateParseException;
 import org.apache.commons.httpclient.util.DateUtil;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.geowebcache.GeoWebCacheDispatcher;
+import org.geowebcache.GeoWebCacheException;
 import org.geowebcache.conveyor.Conveyor;
 import org.geowebcache.conveyor.Conveyor.CacheResult;
 import org.geowebcache.conveyor.ConveyorTile;
@@ -31,20 +51,25 @@ import org.geowebcache.layer.TileLayerDispatcher;
 import org.geowebcache.mime.ImageMime;
 import org.geowebcache.stats.RuntimeStats;
 import org.geowebcache.storage.DefaultStorageFinder;
-import org.geowebcache.util.ServletUtils;
 import org.springframework.http.MediaType;
+/**
+ * Utility methods that can be used to write a string as http response</br>
+ * The response can be a valid one or contains an error status code</br>
+ * The HTTP response can be rendered as HTML or XML
+ * @author sandr
+ *
+ */
+public final class ResponseUtils {
 
-public final class GeoWebCacheUtils {
+    private static Log log = LogFactory.getLog(ResponseUtils.class);
 
-    private static Log log = LogFactory.getLog(GeoWebCacheUtils.class);
-
-    private GeoWebCacheUtils() {
+    private ResponseUtils() {
     }
 
     public static void writeTile(Conveyor conv, String layerName,
             TileLayerDispatcher tileLayerDispatcher, DefaultStorageFinder defaultStorageFinder,
             RuntimeStats runtimeStats)
-                    throws GeoWebCacheException, RequestFilterException, IOException {
+            throws GeoWebCacheException, RequestFilterException, IOException {
         ConveyorTile convTile = (ConveyorTile) conv;
 
         // B3) Get the configuration that has to respond to this request
@@ -286,7 +311,7 @@ public final class GeoWebCacheUtils {
         if (message != null) {
             res = new ByteArrayResource(message.getBytes());
         }
-        GeoWebCacheUtils.writeFixedResponse(response, httpCode, contentType, res, CacheResult.OTHER,
+        ResponseUtils.writeFixedResponse(response, httpCode, contentType, res, CacheResult.OTHER,
                 runtimeStats);
     }
 
