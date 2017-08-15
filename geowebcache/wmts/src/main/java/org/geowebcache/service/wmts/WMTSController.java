@@ -49,7 +49,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
-@RequestMapping("**" + WMTSService.SERVICE_WMTS)
+@RequestMapping("**/" + WMTSService.SERVICE_WMTS)
 public class WMTSController {
 
     private static Log log = LogFactory.getLog(WMTSController.class);
