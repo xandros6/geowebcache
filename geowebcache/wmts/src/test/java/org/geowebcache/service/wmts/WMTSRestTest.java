@@ -86,13 +86,13 @@ public class WMTSRestTest {
                         "//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='tile']"
                                 + "[@format='image/jpeg']"
                                 + "[@template='http://localhost/geowebcache" + WMTSService.REST_PATH
-                                + "/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}?format=image/jpeg']",
+                                + "/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}?format=image/jpeg&time={time}&elevation={elevation}']",
                         namespaces).nodeCount(1))
                 .andExpect(xpath(
                         "//wmts:Contents/wmts:Layer/wmts:ResourceURL[@resourceType='FeatureInfo']"
                                 + "[@format='text/plain']"
                                 + "[@template='http://localhost/geowebcache" + WMTSService.REST_PATH
-                                + "/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=text/plain']",
+                                + "/mockLayer/{style}/{TileMatrixSet}/{TileMatrix}/{TileRow}/{TileCol}/{J}/{I}?format=text/plain&time={time}&elevation={elevation}']",
                         namespaces).nodeCount(1))
                 .andExpect(
                         xpath("//wmts:ServiceMetadataURL[@xlink:href='http://localhost/geowebcache"

@@ -91,7 +91,16 @@ class WMTSRestWebConfig extends WebMvcConfigurationSupport {
         StringParameterFilter styles = new StringParameterFilter();
         styles.setKey("STYLES");
         styles.setValues(Arrays.asList("style-a", "style-b"));
-        when(tileLayer.getParameterFilters()).thenReturn(Collections.singletonList(styles));
+        
+        StringParameterFilter time = new StringParameterFilter();
+        time.setKey("time");
+        time.setValues(Arrays.asList("2016-02-23T03:00:00.000Z"));
+        
+        StringParameterFilter elevation = new StringParameterFilter();
+        elevation.setKey("elevation");
+        elevation.setValues(Arrays.asList("500"));
+        
+        when(tileLayer.getParameterFilters()).thenReturn(Arrays.asList(styles, time, elevation));
 
         LegendInfo legendInfo2 = new LegendInfoBuilder().withStyleName("styla-b-legend")
                 .withWidth(125).withHeight(130).withFormat("image/png")
